@@ -6,11 +6,13 @@ from pathlib import Path
 from typing import Union, Optional, Tuple, Dict
 import uuid
 
+from Neuretus_XElite.core.ocr.recognition import OCRProcessor
+from Neuretus_XElite.core.ocr.rotation import RotationDetector
+
 from .processed_document import ProcessedDocument
-from core.ocr import RotationDetector, OCRProcessor
-from core.detectors import MalboroDetector, ComputantisDetector, CornerBaneRefiner
-from core.geometry import HomographyCorrector, DocumentScaler
-from core.pdfyer import PDFEngine
+from Neuretus_XElite.core.detectors import MalboroDetector, ComputantisDetector, CornerBaneRefiner
+from Neuretus_XElite.core.geometry import HomographyCorrector, DocumentScaler
+from Neuretus_XElite.core.pdfyer import PDFEngine
 
 
 class NeuretusXElite:
@@ -35,7 +37,7 @@ class NeuretusXElite:
         return {
             "rotation": RotationDetector(output_dir=doc_dir),
             "malboro": MalboroDetector(
-                model_path=os.path.join(self.models_dir, "malboro.pt"),
+                model_path=os.path.join(self.models_dir, "sychok_bygarety.pt"),
                 output_dir=doc_dir
             ),
             "computantis": ComputantisDetector(
