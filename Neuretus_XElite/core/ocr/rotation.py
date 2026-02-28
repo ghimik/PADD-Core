@@ -125,15 +125,17 @@ class RotationDetector:
             data = json.load(f)
         
         label_names = data.get("label_names")
+        scores = data.get("scores")
         if not label_names:
             raise RuntimeError("Failed to get orientation label from model")
         
         label = label_names[0]
         angle = self.ANGLE_MAP.get(label, 0)
+        score = scores[0]
         
-        print(f"Определён угол поворота: {angle}°")
+        print(f"Определён угол поворота: {angle}°; score: {score}")
         
-        return angle
+        return angle, score
     
     def rotate_to_correct(self, image: Union[str, Path, np.ndarray, Image.Image]) -> Image.Image:
         """
@@ -157,10 +159,10 @@ class RotationDetector:
             raise TypeError(f"Unsupported image type: {type(image)}")
         
         
-        angle = self.detect_angle(image)
+        angle, score = self.detect_angle(image)
         
         
-        if angle != 0:
+        if angle != 0 and score > 0.7:
             print(f"Поворачиваем на {angle}°")
             rotated_img = img.rotate(angle, expand=True)
         else:
