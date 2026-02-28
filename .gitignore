@@ -154,3 +154,6 @@ Thumbs.db
 # config/local/
 # *.db
 # *.sqlite3
+
+results
+cases

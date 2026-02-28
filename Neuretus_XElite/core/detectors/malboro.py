@@ -34,7 +34,7 @@ class MalboroDetector(DocumentDetector):
     
     @property
     def name(self) -> str:
-        return "Malboro (YOLO-SEG)"
+        return "Malboro (YOLO-SEG) [Sychok_Bygarety]"
     
     def _save_detection_results(self, image: np.ndarray, corners: Dict[str, Tuple[int, int]], 
                                 bbox: Tuple[int, int, int, int], conf_th: float, mask: Optional[np.ndarray] = None):
