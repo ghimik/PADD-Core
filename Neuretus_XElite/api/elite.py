@@ -6,13 +6,13 @@ from pathlib import Path
 from typing import Union, Optional, Tuple, Dict
 import uuid
 
-from Neuretus_XElite.core.ocr.recognition import OCRProcessor
-from Neuretus_XElite.core.ocr.rotation import RotationDetector
 
 from .processed_document import ProcessedDocument
-from Neuretus_XElite.core.detectors import MalboroDetector, ComputantisDetector, CornerBaneRefiner
-from Neuretus_XElite.core.geometry import HomographyCorrector, DocumentScaler
-from Neuretus_XElite.core.pdfyer import PDFEngine
+from ..core.ocr.recognition import OCRProcessor
+from ..core.ocr.rotation import RotationDetector
+from ..core.detectors import MalboroDetector, ComputantisDetector, CornerBaneRefiner
+from ..core.geometry import HomographyCorrector, DocumentScaler
+from ..core.pdfyer import PDFEngine
 
 
 class NeuretusXElite:
@@ -29,28 +29,46 @@ class NeuretusXElite:
     def _get_doc_output_dir(self, doc_id: str) -> str:
         return os.path.join(self.output_dir, doc_id)
     
-    def _init_components_for_doc(self, doc_id: str):
+    def _init_components_for_doc(self, doc_id: str, ignore_ocr: bool = False):
         """Создает компоненты с конкретной выходной директорией для документа"""
         doc_dir = self._get_doc_output_dir(doc_id)
         os.makedirs(doc_dir, exist_ok=True)
-        
-        return {
-            "rotation": RotationDetector(output_dir=doc_dir),
-            "malboro": MalboroDetector(
-                model_path=os.path.join(self.models_dir, "sychok_bygarety.pt"),
-                output_dir=doc_dir
-            ),
-            "computantis": ComputantisDetector(
-                model_path=os.path.join(self.models_dir, "computantis.pt"),
-                output_dir=doc_dir
-            ),
-            "refiner": CornerBaneRefiner(
-                model_path=os.path.join(self.models_dir, "corner_bane.pth"),
-                output_dir=doc_dir
-            ),
-            "homography": HomographyCorrector(output_dir=doc_dir),
-            "scaler": DocumentScaler(output_dir=doc_dir),
-            "ocr": OCRProcessor(output_dir=doc_dir)
+
+        if ignore_ocr: 
+            return {
+                "malboro": MalboroDetector(
+                    model_path=os.path.join(self.models_dir, "sychok_bygarety.pt"),
+                    output_dir=doc_dir
+                ),
+                "computantis": ComputantisDetector(
+                    model_path=os.path.join(self.models_dir, "computantis.pt"),
+                    output_dir=doc_dir
+                ),
+                "refiner": CornerBaneRefiner(
+                    model_path=os.path.join(self.models_dir, "corner_bane.pth"),
+                    output_dir=doc_dir
+                ),
+                "homography": HomographyCorrector(output_dir=doc_dir),
+                "scaler": DocumentScaler(output_dir=doc_dir),
+        }
+        else: 
+            return {
+                "rotation": RotationDetector(output_dir=doc_dir),
+                "malboro": MalboroDetector(
+                    model_path=os.path.join(self.models_dir, "sychok_bygarety.pt"),
+                    output_dir=doc_dir
+                ),
+                "computantis": ComputantisDetector(
+                    model_path=os.path.join(self.models_dir, "computantis.pt"),
+                    output_dir=doc_dir
+                ),
+                "refiner": CornerBaneRefiner(
+                    model_path=os.path.join(self.models_dir, "corner_bane.pth"),
+                    output_dir=doc_dir
+                ),
+                "ocr": OCRProcessor(output_dir=doc_dir),
+                "homography": HomographyCorrector(output_dir=doc_dir),
+                "scaler": DocumentScaler(output_dir=doc_dir),
         }
     
     def define_rotation_angle(self, image: Union[str, np.ndarray, Image.Image], 
@@ -66,7 +84,6 @@ class NeuretusXElite:
         """0.5) Поворачивает изображение на заданный угол"""
         if doc_id is None:
             doc_id = str(uuid.uuid4())[:8]
-        components = self._init_components_for_doc(doc_id)
         
         if isinstance(image, str):
             img = Image.open(image)
@@ -82,7 +99,7 @@ class NeuretusXElite:
         """1) Находит bounding box документа"""
         if doc_id is None:
             doc_id = str(uuid.uuid4())[:8]
-        components = self._init_components_for_doc(doc_id)
+        components = self._init_components_for_doc(doc_id, ignore_ocr=True)
         
         try:
             _, bbox = components["malboro"].detect(image)
@@ -98,7 +115,7 @@ class NeuretusXElite:
         components = self._init_components_for_doc(doc_id)
         
         try:
-            corners, _ = components["malboro"].detect(image)
+            corners, _ = components["malboro"].detect(image, ignore_ocr=True)
         except:
             corners, _ = components["computantis"].detect(image)
         
@@ -109,7 +126,7 @@ class NeuretusXElite:
         """2Б) Находит bbox и углы документа"""
         if doc_id is None:
             doc_id = str(uuid.uuid4())[:8]
-        components = self._init_components_for_doc(doc_id)
+        components = self._init_components_for_doc(doc_id, ignore_ocr=True)
         
         try:
             corners, bbox = components["malboro"].detect(image)
@@ -124,7 +141,7 @@ class NeuretusXElite:
         """3) Уточняет углы"""
         if doc_id is None:
             doc_id = str(uuid.uuid4())[:8]
-        components = self._init_components_for_doc(doc_id)
+        components = self._init_components_for_doc(doc_id, ignore_ocr=True)
         
         return components["refiner"].refine(image, corners, bbox)
     
@@ -133,7 +150,7 @@ class NeuretusXElite:
         """4) Исправляет перспективу"""
         if doc_id is None:
             doc_id = str(uuid.uuid4())[:8]
-        components = self._init_components_for_doc(doc_id)
+        components = self._init_components_for_doc(doc_id, ignore_ocr=True)
         
         return components["homography"].correct(image, corners)
     
