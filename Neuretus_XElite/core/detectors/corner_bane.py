@@ -311,7 +311,7 @@ class CornerBaneRefiner:
                 dy = y - bbox_corners[label][1]
                 patch_px = max(
                     int(np.sqrt(dx*dx + dy*dy) * 2),
-                    int(min(H, W) * 0.1)
+                    int(min(H, W) * 0.20)
                 )
             else:
                 patch_px = int(min(H, W) * patch_size)
