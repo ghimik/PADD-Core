@@ -155,5 +155,6 @@ Thumbs.db
 # *.db
 # *.sqlite3
 
-results
-cases
+manual_testing
+morphy-test
+morphy-test/

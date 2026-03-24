@@ -6,6 +6,8 @@ from pathlib import Path
 from typing import Union, Optional, Tuple, Dict
 import uuid
 
+from ..core.ocr.whitenner import DocumentEnhancer
+
 
 from .processed_document import ProcessedDocument
 from ..core.ocr.recognition import OCRProcessor
@@ -33,43 +35,33 @@ class NeuretusXElite:
         """Создает компоненты с конкретной выходной директорией для документа"""
         doc_dir = self._get_doc_output_dir(doc_id)
         os.makedirs(doc_dir, exist_ok=True)
-
-        if ignore_ocr: 
-            return {
-                "malboro": MalboroDetector(
-                    model_path=os.path.join(self.models_dir, "sychok_bygarety.pt"),
-                    output_dir=doc_dir
-                ),
-                "computantis": ComputantisDetector(
-                    model_path=os.path.join(self.models_dir, "computantis.pt"),
-                    output_dir=doc_dir
-                ),
-                "refiner": CornerBaneRefiner(
-                    model_path=os.path.join(self.models_dir, "corner_bane.pth"),
-                    output_dir=doc_dir
-                ),
-                "homography": HomographyCorrector(output_dir=doc_dir),
-                "scaler": DocumentScaler(output_dir=doc_dir),
+        
+        return {
+            "rotation": RotationDetector(output_dir=doc_dir),
+            "malboro": MalboroDetector(
+                model_path=os.path.join(self.models_dir, "sychok_bygarety.pt"),
+                output_dir=doc_dir
+            ),
+            "computantis": ComputantisDetector(
+                model_path=os.path.join(self.models_dir, "computantis.pt"),
+                output_dir=doc_dir
+            ),
+            "refiner": CornerBaneRefiner(
+                model_path=os.path.join(self.models_dir, "corner_bane.pth"),
+                output_dir=doc_dir
+            ),
+            "homography": HomographyCorrector(output_dir=doc_dir),
+            "scaler": DocumentScaler(output_dir=doc_dir),
+            "ocr": OCRProcessor(output_dir=doc_dir),
+            "enhancer": DocumentEnhancer(brightness=1.15, contrast=1.2, 
+                                 whitening=0.85, shadow_removal=True, sharpen=True)
         }
-        else: 
-            return {
-                "rotation": RotationDetector(output_dir=doc_dir),
-                "malboro": MalboroDetector(
-                    model_path=os.path.join(self.models_dir, "sychok_bygarety.pt"),
-                    output_dir=doc_dir
-                ),
-                "computantis": ComputantisDetector(
-                    model_path=os.path.join(self.models_dir, "computantis.pt"),
-                    output_dir=doc_dir
-                ),
-                "refiner": CornerBaneRefiner(
-                    model_path=os.path.join(self.models_dir, "corner_bane.pth"),
-                    output_dir=doc_dir
-                ),
-                "ocr": OCRProcessor(output_dir=doc_dir),
-                "homography": HomographyCorrector(output_dir=doc_dir),
-                "scaler": DocumentScaler(output_dir=doc_dir),
-        }
+    
+    def enhance(self, image: np.ndarray, doc_id: Optional[str] = None) -> np.ndarray:
+        """Предобработка: улучшение качества документа"""
+        if doc_id is None:
+            doc_id = str(uuid.uuid4())[:8]
+        return self.enhancer.enhance(image)
     
     def define_rotation_angle(self, image: Union[str, np.ndarray, Image.Image], 
                               doc_id: Optional[str] = None) -> int:
@@ -188,7 +180,10 @@ class NeuretusXElite:
         try:
             corners, bbox = components["malboro"].detect(rotated)
         except:
-            corners, bbox = components["computantis"].detect(rotated)
+            try: 
+                corners, bbox = components["computantis"].detect(rotated)
+            except:
+                raise ValueError("Failed to detect document in the image")
         
         # 3 Уточнение
         refined = components["refiner"].refine(rotated, corners, bbox)
@@ -200,16 +195,16 @@ class NeuretusXElite:
         scaled = components["scaler"].scale_to_a4(warped, orientation="portrait")
         
         # 6 OCR
-        components["ocr"].recognize(scaled)
+        # components["ocr"].recognize(scaled)
         
-        # 7 PDF
-        json_path = os.path.join(self._get_doc_output_dir(doc_id), "ocr_output", "result.json")
-        pdf_path = os.path.join(self._get_doc_output_dir(doc_id), "output.pdf")
+        # # 7 PDF
+        # json_path = os.path.join(self._get_doc_output_dir(doc_id), "ocr_output", "result.json")
+        # pdf_path = os.path.join(self._get_doc_output_dir(doc_id), "output.pdf")
         
-        img_dir = os.path.join(self._get_doc_output_dir(doc_id), "ocr_output", "imgs")
-        if os.path.exists(img_dir):
-            self.pdf_engine.reconstruct(json_path, pdf_path, image_dir=img_dir)
-        else:
-            self.pdf_engine.reconstruct(json_path, pdf_path)
+        # img_dir = os.path.join(self._get_doc_output_dir(doc_id), "ocr_output", "imgs")
+        # if os.path.exists(img_dir):
+        #     self.pdf_engine.reconstruct(json_path, pdf_path, image_dir=img_dir)
+        # else:
+        #     self.pdf_engine.reconstruct(json_path, pdf_path)
         
         return ProcessedDocument(doc_id, self.output_dir)

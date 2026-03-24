@@ -84,7 +84,7 @@ class RotationDetector:
         print(f"Выходное изображение сохранено: {output_path}")
         return output_path
     
-    def detect_angle(self, image: Union[str, Path, np.ndarray, Image.Image]) -> int:
+    def detect_angle(self, image: Union[str, Path, np.ndarray, Image.Image]) -> Tuple[int, float]:
         """
         Определяет угол поворота документа.
         Сохраняет входное изображение и JSON с результатом.
