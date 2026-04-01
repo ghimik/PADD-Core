@@ -156,5 +156,12 @@ Thumbs.db
 # *.sqlite3
 
 manual_testing
+manual_testing/
 morphy-test
 morphy-test/
+
+global_pdf_testing
+global_pdf_testing/
+
+results
+results/

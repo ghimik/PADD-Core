@@ -54,7 +54,8 @@ class NeuretusXElite:
             "scaler": DocumentScaler(output_dir=doc_dir),
             "ocr": OCRProcessor(output_dir=doc_dir),
             "enhancer": DocumentEnhancer(brightness=1.15, contrast=1.2, 
-                                 whitening=0.85, shadow_removal=True, sharpen=True)
+                                 whitening=0.85, shadow_removal=True, sharpen=True,
+                                 output_dir=doc_dir)
         }
     
     def enhance(self, image: np.ndarray, doc_id: Optional[str] = None) -> np.ndarray:
@@ -175,36 +176,41 @@ class NeuretusXElite:
         # 0-0.5 Поворот
         rotated_pil = components["rotation"].rotate_to_correct(image_path)
         rotated = cv2.cvtColor(np.array(rotated_pil), cv2.COLOR_RGB2BGR)
+
+        # 0.5.5 Улучшение качества
+        enchanced = components["enhancer"].enhance(rotated)
         
         # 1-2 Детекция
         try:
-            corners, bbox = components["malboro"].detect(rotated)
+            corners, bbox = components["malboro"].detect(enchanced)
         except:
             try: 
-                corners, bbox = components["computantis"].detect(rotated)
+                corners, bbox = components["computantis"].detect(enchanced)
             except:
                 raise ValueError("Failed to detect document in the image")
         
         # 3 Уточнение
-        refined = components["refiner"].refine(rotated, corners, bbox)
+        refined = components["refiner"].refine(enchanced, corners, bbox)
         
         # 4 Гомография
-        warped = components["homography"].correct(rotated, refined)
+        warped = components["homography"].correct(enchanced, refined)
         
         # 5 Масштабирование
         scaled = components["scaler"].scale_to_a4(warped, orientation="portrait")
+
+        
         
         # 6 OCR
-        # components["ocr"].recognize(scaled)
+        components["ocr"].recognize(scaled)
         
         # # 7 PDF
-        # json_path = os.path.join(self._get_doc_output_dir(doc_id), "ocr_output", "result.json")
-        # pdf_path = os.path.join(self._get_doc_output_dir(doc_id), "output.pdf")
+        json_path = os.path.join(self._get_doc_output_dir(doc_id), "ocr_output", "result.json")
+        pdf_path = os.path.join(self._get_doc_output_dir(doc_id), "output.pdf")
         
-        # img_dir = os.path.join(self._get_doc_output_dir(doc_id), "ocr_output", "imgs")
-        # if os.path.exists(img_dir):
-        #     self.pdf_engine.reconstruct(json_path, pdf_path, image_dir=img_dir)
-        # else:
-        #     self.pdf_engine.reconstruct(json_path, pdf_path)
+        img_dir = os.path.join(self._get_doc_output_dir(doc_id), "ocr_output", "imgs")
+        if os.path.exists(img_dir):
+            self.pdf_engine.reconstruct(json_path, pdf_path, image_dir=img_dir)
+        else:
+            self.pdf_engine.reconstruct(json_path, pdf_path)
         
         return ProcessedDocument(doc_id, self.output_dir)
